@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f9;
+    margin: 0;
+    padding: 20px;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #1e293b;
+    color: white;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+#roleBadge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.admin-badge {
+    background: #16a34a;
+    color: white;
+}
+
+.user-badge {
+    background: #2563eb;
+    color: white;
+}
+
+/* ===== FORM ===== */
+input {
+    padding: 8px;
+    width: 250px;
+    margin-bottom: 10px;
+}
+
+/* ===== TABLE ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 20px;
+}
+
+th {
+    background: #1e293b;
+    color: white;
+    padding: 10px;
+}
+
+td {
+    padding: 10px;
+    text-align: center;
+}
+
+tr:nth-child(even) {
+    background-color: #f2f2f2;
+}
+
+tr:hover {
+    background-color: #e2e8f0;
+}
+
+/* ===== BUTTONS ===== */
+button {
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+.add-btn { background: #16a34a; color: white; }
+.edit-btn { background: #2563eb; color: white; }
+.delete-btn { background: #dc2626; color: white; }
+
+</style>
+</head>
+
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar">
+    <h2>Student Dashboard</h2>
+    <div>
+        <span id="roleBadge"></span>
+        <button onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<h3>Add Student</h3>
+
+<input type="text" id="name" placeholder="Name"><br>
+<input type="email" id="email" placeholder="Email"><br>
+<input type="number" id="age" placeholder="Age"><br>
+<input type="text" id="course" placeholder="Course"><br>
+
+<button class="add-btn" onclick="addStudent()">Add Student</button>
+
+<p id="message" style="font-weight:bold;"></p>
+
+<hr>
+
+<h3>Search Students</h3>
+<input
+    type="text"
+    id="searchInput"
+    placeholder="Search by name, email, or course"
+    onkeyup="filterStudents()"
+>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Age</th>
+            <th>Course</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody id="studentTable"></tbody>
+</table>
+
+<!-- ===== EDIT MODAL ===== -->
+<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+    <div style="background:white; width:300px; margin:100px auto; padding:20px; border-radius:5px;">
+        <h3>Edit Student</h3>
+
+        <input type="hidden" id="edit_id">
+
+        <input type="text" id="edit_name"><br>
+        <input type="email" id="edit_email"><br>
+        <input type="number" id="edit_age"><br>
+        <input type="text" id="edit_course"><br>
+
+        <button onclick="updateStudent()">Update</button>
+        <button onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+
+const API_URL = "http://127.0.0.1:8000";
+const token = localStorage.getItem("token");
+
+if (!token) {
+    alert("Please login first");
+    window.location.href = "index.html";
+}
+
+/* ===== ROLE BADGE ===== */
+const payload = JSON.parse(atob(token.split('.')[1]));
+const role = payload.role;
+
+const roleBadge = document.getElementById("roleBadge");
+
+if (role === "admin") {
+    roleBadge.innerText = "ADMIN";
+    roleBadge.classList.add("admin-badge");
+} else {
+    roleBadge.innerText = "USER";
+    roleBadge.classList.add("user-badge");
+}
+
+let allStudents = [];
+
+const nameInput = document.getElementById("name");
+const emailInput = document.getElementById("email");
+const ageInput = document.getElementById("age");
+const courseInput = document.getElementById("course");
+const messageEl = document.getElementById("message");
+const studentTable = document.getElementById("studentTable");
+
+/* ===== LOAD STUDENTS ===== */
+async function loadStudents() {
+    const res = await fetch(`${API_URL}/students/`, {
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        alert(data.detail || "Unauthorized");
+        return;
+    }
+
+    allStudents = data;
+    renderTable(allStudents);
+}
+
+/* ===== RENDER TABLE ===== */
+function renderTable(students) {
+    studentTable.innerHTML = "";
+
+    students.forEach(s => {
+        studentTable.innerHTML += `
+        <tr>
+            <td>${s.id}</td>
+            <td>${s.name}</td>
+            <td>${s.email}</td>
+            <td>${s.age}</td>
+            <td>${s.course}</td>
+            <td>
+                ${role === "admin" ? `
+                    <button class="edit-btn" onclick="openEditModal(${s.id}, '${s.name}', '${s.email}', ${s.age}, '${s.course}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteStudent(${s.id})">Delete</button>
+                ` : `
+                    <span style="color:gray;">No Permission</span>
+                `}
+            </td>
+        </tr>`;
+    });
+}
+
+/* ===== SEARCH ===== */
+function filterStudents() {
+    const keyword = document.getElementById("searchInput").value.toLowerCase();
+
+    const filtered = allStudents.filter(s =>
+        s.name.toLowerCase().includes(keyword) ||
+        s.email.toLowerCase().includes(keyword) ||
+        s.course.toLowerCase().includes(keyword)
+    );
+
+    renderTable(filtered);
+}
+
+/* ===== ADD ===== */
+async function addStudent() {
+    const student = {
+        name: nameInput.value.trim(),
+        email: emailInput.value.trim(),
+        age: Number(ageInput.value),
+        course: courseInput.value.trim()
+    };
+
+    if (!student.name || !student.email || !student.course || !student.age) {
+        messageEl.innerText = "Fill all fields correctly";
+        messageEl.style.color = "red";
+        return;
+    }
+
+    const res = await fetch(`${API_URL}/students/`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify(student)
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        messageEl.innerText = data.detail || "Error";
+        messageEl.style.color = "red";
+        return;
+    }
+
+    messageEl.innerText = "Student added successfully";
+    messageEl.style.color = "green";
+
+    nameInput.value = "";
+    emailInput.value = "";
+    ageInput.value = "";
+    courseInput.value = "";
+
+    loadStudents();
+}
+
+/* ===== EDIT ===== */
+function openEditModal(id, name, email, age, course) {
+    document.getElementById("edit_id").value = id;
+    document.getElementById("edit_name").value = name;
+    document.getElementById("edit_email").value = email;
+    document.getElementById("edit_age").value = age;
+    document.getElementById("edit_course").value = course;
+    document.getElementById("editModal").style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById("editModal").style.display = "none";
+}
+
+/* ===== UPDATE ===== */
+async function updateStudent() {
+    const id = document.getElementById("edit_id").value;
+
+    const res = await fetch(`${API_URL}/students/${id}`, {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({
+            name: document.getElementById("edit_name").value,
+            email: document.getElementById("edit_email").value,
+            age: Number(document.getElementById("edit_age").value),
+            course: document.getElementById("edit_course").value
+        })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        alert(data.detail || "Update failed");
+        return;
+    }
+
+    alert("Successfully updated");
+    closeModal();
+    loadStudents();
+}
+
+/* ===== DELETE ===== */
+async function deleteStudent(id) {
+    const res = await fetch(`${API_URL}/students/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": "Bearer " + token }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+        alert(data.detail || "Delete failed");
+        return;
+    }
+
+    alert("Record deleted successfully");
+    loadStudents();
+}
+
+/* ===== LOGOUT ===== */
+function logout() {
+    localStorage.removeItem("token");
+    window.location.href = "index.html";
+}
+
+loadStudents();
+
+</script>
+
+</body>
+</html>
