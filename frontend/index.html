@@ -15,7 +15,6 @@ body {
     height: 100vh;
 }
 
-/* ===== MAIN CARD ===== */
 .container {
     background: white;
     padding: 40px;
@@ -35,7 +34,6 @@ h3 {
     color: #334155;
 }
 
-/* ===== INPUT FIELDS ===== */
 input {
     width: 100%;
     padding: 10px;
@@ -51,7 +49,6 @@ input:focus {
     box-shadow: 0 0 6px rgba(37,99,235,0.5);
 }
 
-/* ===== BUTTONS ===== */
 button {
     width: 100%;
     padding: 10px;
@@ -80,14 +77,12 @@ button {
     background: #1e40af;
 }
 
-/* ===== MESSAGE ===== */
 #message {
     margin-top: 15px;
     text-align: center;
     font-weight: bold;
 }
 
-/* ===== DIVIDER ===== */
 hr {
     margin: 25px 0;
     border: none;
@@ -103,7 +98,6 @@ hr {
 
 <h2>Student Management System</h2>
 
-<!-- REGISTER -->
 <h3>Register</h3>
 <input type="text" id="reg_username" placeholder="Username">
 <input type="password" id="reg_password" placeholder="Password">
@@ -111,7 +105,6 @@ hr {
 
 <hr>
 
-<!-- LOGIN -->
 <h3>Login</h3>
 <input type="text" id="login_username" placeholder="Username">
 <input type="password" id="login_password" placeholder="Password">
@@ -122,7 +115,9 @@ hr {
 </div>
 
 <script>
-const API_URL = "http://127.0.0.1:8000";
+
+/* ✅ UPDATED PRODUCTION API URL */
+const API_URL = "https://student-management-fastapi-vlwc.onrender.com";
 
 /* ---------- REGISTER ---------- */
 async function register() {
@@ -153,7 +148,7 @@ async function register() {
             msg.innerText = data.detail || JSON.stringify(data);
         }
     } catch (err) {
-        alert("Backend not reachable. Is FastAPI running?");
+        alert("Backend not reachable.");
         console.error(err);
     }
 }
@@ -175,7 +170,7 @@ async function login() {
         body.append("username", username);
         body.append("password", password);
 
-        const res = await fetch("/auth/login", {
+        const res = await fetch(`${API_URL}/auth/login`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded"
@@ -190,7 +185,7 @@ async function login() {
             msg.style.color = "green";
             msg.innerText = "Login successful!";
             setTimeout(() => {
-                window.location.href = "/dashboard";
+                window.location.href = `${API_URL}/dashboard`;
             }, 800);
         } else {
             msg.style.color = "red";
@@ -201,6 +196,7 @@ async function login() {
         console.error(err);
     }
 }
+
 </script>
 
 </body>
